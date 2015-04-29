@@ -18,8 +18,8 @@ namespace NITRO
 		m_fieldCount = 0;
 		m_density = density;
 
-		if( x_dim <= 3 || y_dim <= 3 || z_dim <= 3 ){
-			cerr << "voxels dimensiona must be at least 1 " << endl;
+		if( x_dim <= 2 || y_dim <= 2 || z_dim <= 2 ){
+			cerr << "voxels dimensions must be at least 3 " << endl;
 			exit( EXIT_FAILURE );
 		}
 		// these need to be >= 4, should check that somewhere
@@ -148,7 +148,7 @@ namespace NITRO
 				unsigned xi = voxelHash( m_grid[0], samples[s]->coordinate, 0 );
 				unsigned yi = voxelHash( m_grid[1], samples[s]->coordinate, 1 );
 				unsigned zi = voxelHash( m_grid[2], samples[s]->coordinate, 2 );
-				// cout << "adding to bin: [" << xi << "][" << yi << "][" << zi << "]" << endl;
+				cout << "adding to bin: [" << xi << "][" << yi << "][" << zi << "]" << endl;
 				voxelVertices[ xi + m_grid[1] * ( yi + m_grid[2] * zi )].push_back( samples[s] );
 			}			
 
@@ -179,6 +179,7 @@ namespace NITRO
 				for( unsigned i = 1; i < xBins; ++i ){
 					// examine each voxel
 					marchCube( i, j, k );
+					cout << "cube: " << i << " " << j << " " << k << endl;
 				}
 			}
 		}
@@ -196,6 +197,7 @@ namespace NITRO
 
 					vector< Sample* > vert = voxelVertices[ (i + x) + m_grid[1] * ( (j + y) + m_grid[2] * (k + z) ) ];
 					double vd = vertDensity( vert );
+						cout << "vd: [" << ( x + 2 * (y + 2 * z) ) << "] " << vd << endl;
 
 					if( vd >= m_density ){
 						activeVerts |= 1 << ( x + 2 * (y + 2 * z) );          
@@ -241,10 +243,9 @@ namespace NITRO
             }
 
             for(unsigned c = 0; c < 3; ++c ){
-                // int v = triangleConnectionTable[ activeVerts ][ 3 * t + c ];
+                int v = triangleConnectionTable[ activeVerts ][ 3 * t + c ];
 
-                    // vGetColor(sColor, asEdgeVertex[iVertex], asEdgeNorm[iVertex]);
-                    // glColor3f(sColor.fX, sColor.fY, sColor.fZ);
+            	cout << "v " << edgeVertex[v].x << " " << edgeVertex[v].y << " " << edgeVertex[v].z << endl;
                     // glNormal3f(asEdgeNorm[iVertex].fX,   asEdgeNorm[iVertex].fY,   asEdgeNorm[iVertex].fZ);
                     // glVertex3f(asEdgeVertex[iVertex].fX, asEdgeVertex[iVertex].fY, asEdgeVertex[iVertex].fZ);
             }
