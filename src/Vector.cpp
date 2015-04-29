@@ -97,6 +97,11 @@ namespace NITRO
    {
       (*this) *= ( 1./c );
    }
+
+   bool Vector :: operator==( const Vector& v )
+   {
+      return x == v.x && y == v.y && z == v.z;
+   }
    
    double Vector :: norm( void ) const
    {

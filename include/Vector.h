@@ -84,6 +84,9 @@ namespace NITRO
          void operator/=( const double& c );
          // scalar division / assignment
 
+         bool operator==( const Vector& v );
+         // checks for equality
+
          double norm( void ) const;
          // returns Euclidean length
 

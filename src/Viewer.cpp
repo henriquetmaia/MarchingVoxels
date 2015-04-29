@@ -14,6 +14,7 @@ using namespace std;
 namespace NITRO
 {
    // declare static member variables
+   Space Viewer::fields;
    Viewer::RenderMode Viewer::mode = renderShaded;
    GLuint Viewer::surfaceDL = 0;
    int Viewer::windowSize[2] = { 512, 512 };
@@ -26,9 +27,8 @@ namespace NITRO
       initGLUT();
       initGL();
       initGLSL();
-   
+
       updateDisplayList();
-   
       glutMainLoop();
    }
 
@@ -136,6 +136,8 @@ namespace NITRO
             cerr << "[Viewer::mProcess] No DensityFields to process" << endl;
             exit( EXIT_FAILURE );
          }
+         fields.march();
+         cout << "finished Marching!" << endl;
          // for every densityfield
          // cout << "Finished MarchingCubes on densityfield["<<d <<"], in d_time: " << sim_time << endl;
 
@@ -335,6 +337,7 @@ namespace NITRO
          drawWireframe();
       }
 
+      drawVertices();
       drawIsolatedVertices();
 
       glPopAttrib();
@@ -345,9 +348,9 @@ namespace NITRO
       // glColor3f( 1., .4, 0. ); // Caltech Orange
       glColor3f( 0.549, 0.839, 1. ); // Columbia Blue
 
-      for( unsigned m = 0; m < sim.size(); ++m ){
-         for( FaceCIter f  = sim[m]->faces.begin();
-                        f != sim[m]->faces.end();
+      for( unsigned df = 0; df < fields.size(); ++df ){
+         for( FaceCIter f  = fields[df]->faces.begin();
+                        f != fields[df]->faces.end();
                         f ++ )
          {
             if( f->isBoundary() ) continue;
@@ -388,9 +391,9 @@ namespace NITRO
       glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 
       glBegin( GL_LINES );
-      for( unsigned m = 0; m < sim.size(); ++m ){
-         for( EdgeCIter e  = sim[m]->edges.begin();
-               e != sim[m]->edges.end();
+      for( unsigned df = 0; df < fields.size(); ++df ){
+         for( EdgeCIter e  = fields[df]->edges.begin();
+               e != fields[df]->edges.end();
                e ++ )
          {
             glVertex3dv( &e->he->vertex->position[0] );
@@ -401,6 +404,33 @@ namespace NITRO
 
       glPopAttrib();
    }
+
+   void Viewer :: drawVertices( void )
+   {
+      glPushAttrib( GL_ALL_ATTRIB_BITS );
+
+      // draw with big, round, red dots
+      glPointSize( 20 );
+      // glHint( GL_POINT_SMOOTH_HINT, GL_NICEST );
+      // glEnable( GL_POINT_SMOOTH );
+      // glEnable( GL_BLEND );
+      // glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+      glColor4f( 0.549, 0.839, 1., 1. ); // Columbia Blue
+
+      glBegin( GL_POINTS );
+
+      for( unsigned df = 0; df < fields.size(); ++df ){
+         for( unsigned v  = 0; v < fields.m_sampleSets[df]->samples.size(); ++v )
+         {
+            glVertex3dv( &(fields.m_sampleSets[df]->samples[v]->coordinate[0]) );
+         }
+      }
+
+      glEnd();
+
+      glPopAttrib();
+   }
+
 
    void Viewer :: drawIsolatedVertices( void )
    {
@@ -415,9 +445,9 @@ namespace NITRO
       glColor4f( 1., 0., 0., 1. ); // red
 
       glBegin( GL_POINTS );
-      for( unsigned m = 0; m < sim.size(); ++m ){
-         for( VertexCIter v  = sim[m]->vertices.begin();
-                          v != sim[m]->vertices.end();
+      for( unsigned df = 0; df < fields.size(); ++df ){
+         for( VertexCIter v  = fields[df]->vertices.begin();
+                          v != fields[df]->vertices.end();
                           v ++ )
          {
             if( v->isIsolated() )
@@ -442,7 +472,9 @@ namespace NITRO
       surfaceDL = glGenLists( 1 );
    
       glNewList( surfaceDL, GL_COMPILE );
+
       drawMesh();
+
       glEndList();
    }
    
@@ -459,7 +491,7 @@ namespace NITRO
    void Viewer :: idle( void )
    {
       camera.idle();
-      mProcess();
+      // mProcess();
       glutPostRedisplay();
    }
 

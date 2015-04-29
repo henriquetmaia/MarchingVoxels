@@ -14,17 +14,22 @@
 
 #include "Camera.h"
 #include "Shader.h"
-#include "DensityField.h"
+#include "Space.h"
+#include "Vector.h"
+#include "Real.h"
+
+using namespace std;
 
 namespace NITRO
 {
+
    class Viewer
    {
       public:
          static void init( void );
          // displays the viewer until the program ends
 
-         std::vector<DensityField> fields;
+         static Space fields;
          // contains all the density fields visualized by Viewer
 
       protected:
@@ -37,6 +42,7 @@ namespace NITRO
          static void updateDisplayList( void );
          static void drawPolygons( void );
          static void drawWireframe( void );
+         static void drawVertices( void );
          static void drawIsolatedVertices( void );
          
          // GLUT callbacks
