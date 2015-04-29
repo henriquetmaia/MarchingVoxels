@@ -64,7 +64,11 @@ namespace NITRO{
       unsigned voxelHash( unsigned N, Vector coord, unsigned dim );
       void marchCube( unsigned i, unsigned j, unsigned k );
       void readSample( stringstream& ss );
-      void updateGrid( const Vector newSample );
+      // void updateGrid( const Vector newSample ); // unecessary if normalize
+      double getOffset( double val1, double val2 );
+      double vertDensity( vector< Sample* > samples );
+      Vector getNormal( unsigned i, unsigned j, unsigned k );
+      Vector baseCoord( unsigned i, unsigned j, unsigned k );
       unsigned m_grid[3];
       double m_density; 
       Vector min_coord;
