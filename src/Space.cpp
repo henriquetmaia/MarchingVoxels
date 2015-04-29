@@ -3,6 +3,7 @@
 #include <iostream>
 #include <sstream>
 #include "Space.h"
+#include "March.h"
 
 using namespace std;
 namespace NITRO
@@ -138,7 +139,8 @@ namespace NITRO
    		// free( voxels );
    		// Flat[HEIGHT * WIDTH * DEPTH]
    		// Flat[x + WIDTH * (y + DEPTH * z)] = Original[x, y, z]
-   		voxels = new vector< Sample* >[ m_grid[0] * m_grid[1] * m_grid[2] ];
+   		// I would prefer to have this be an unordered_map with my own hash and equivalence operator...
+   		voxelVertices = new vector< Sample* >[ m_grid[0] * m_grid[1] * m_grid[2] ];
 
    		for( unsigned f = 0; f < m_fieldCount; ++f ){
 
@@ -152,15 +154,154 @@ namespace NITRO
 				unsigned yi = voxelHash( m_grid[1], samples[s]->coordinate, 1 );
 				unsigned zi = voxelHash( m_grid[2], samples[s]->coordinate, 2 );
 				// cout << "adding to bin: [" << xi << "][" << yi << "][" << zi << "]" << endl;
-				voxels[ xi + m_grid[1] * ( yi + m_grid[2] * zi )].push_back( samples[s] );
+				voxelVertices[ xi + m_grid[1] * ( yi + m_grid[2] * zi )].push_back( samples[s] );
 			}			
 
    		}
    }
 
    void Space :: march( void ){
-   	
+
+   		// need to add support for different meshes with different density samples etc...
+   		// for now just looking at the bin as a whole...
+   		//		(i could assign a density field pointer inside Sample....)
+
+   		// going to each voxel,
+   		//	examine its vertices (interpolate the samples they contain, compare with Space's desired density)
+   		//	extract a boolean value
+   		//	determine what type of vertex-combination it is
+   		//	assign appropriate edges
+   		//	create triangles & normals, add them to the 
+
+
+   		unsigned xBins = m_grid[0] - 1;
+   		unsigned yBins = m_grid[1] - 1;
+   		unsigned zBins = m_grid[2] - 1;
+
+		for( unsigned k = 0; k < zBins; ++k ){
+			// for each plane-slice of voxels
+			for( unsigned j = 0; j < yBins; ++j ){
+				for( unsigned i = 0; i < xBins; ++i ){
+					// examine each voxel
+					marchCube( i, j, k );
+				}
+			}
+		}
+
    }
+
+   void Space :: marchCube( unsigned i, unsigned j, unsigned k ){
+
+   		// double vertDensities[8];
+   		int8_t activeVerts = 0;
+   		// Flat[x + WIDTH * (y + DEPTH * z)] = Original[x, y, z]
+		for( unsigned z = 0; z < 2; ++z ){
+			for( unsigned y = 0; y < 2; ++y ){
+				for( unsigned x = 0; x < 2; ++x ){
+
+					vector< Sample* > vert = voxelVertices[ (i + x) + m_grid[1] * ( (j + y) + m_grid[2] * (k + z) ) ];
+					if( unsigned numSamples = vert.size() != 0 ){
+						double avgDensity = 0.;
+						for( unsigned s = 0; s < numSamples; ++s ){
+							avgDensity += vert[s]->density;
+						}
+						avgDensity /= numSamples;
+						if( avgDensity >= m_density ){
+							activeVerts |= 1 << ( x + 2 * (y + 2 * z) );          
+						}
+						// vertDensities[ x + 2 * (y + 2 * z) ] = avgDensity;
+					}
+					// else{
+					// 	vertDensities[ x + 2 * (y + 2 * z) ] = 0.;
+					// }
+				}
+			}
+		}
+
+		// int8_t edgeFlags = cubeEdgeFlags[ activeVerts ];
+		// index = [v7][v6][v5][v4][v3][v2][v1][v0]
+
+   }
+
+
+/*
+{
+	//vMarchCube1 performs the Marching Cubes algorithm on a single cube
+GLvoid vMarchCube1(GLfloat fX, GLfloat fY, GLfloat fZ, GLfloat fScale)
+{
+        extern GLint aiCubeEdgeFlags[256];
+        extern GLint a2iTriangleConnectionTable[256][16];
+
+        GLint iCorner, iVertex, iVertexTest, iEdge, iTriangle, iFlagIndex, iEdgeFlags;
+        GLfloat fOffset;
+        GLvector sColor;
+        GLfloat afCubeValue[8];
+        GLvector asEdgeVertex[12];
+        GLvector asEdgeNorm[12];
+
+        //Make a local copy of the values at the cube's corners
+        for(iVertex = 0; iVertex < 8; iVertex++)
+        {
+                afCubeValue[iVertex] = fSample(fX + a2fVertexOffset[iVertex][0]*fScale,
+                                                   fY + a2fVertexOffset[iVertex][1]*fScale,
+                                                   fZ + a2fVertexOffset[iVertex][2]*fScale);
+        }
+
+        //Find which vertices are inside of the surface and which are outside
+        iFlagIndex = 0;
+        for(iVertexTest = 0; iVertexTest < 8; iVertexTest++)
+        {
+                if(afCubeValue[iVertexTest] <= fTargetValue) 
+                        iFlagIndex |= 1<<iVertexTest;
+        }
+
+        //Find which edges are intersected by the surface
+        iEdgeFlags = aiCubeEdgeFlags[iFlagIndex];
+
+        //If the cube is entirely inside or outside of the surface, then there will be no intersections
+        if(iEdgeFlags == 0) 
+        {
+                return;
+        }
+
+        //Find the point of intersection of the surface with each edge
+        //Then find the normal to the surface at those points
+        for(iEdge = 0; iEdge < 12; iEdge++)
+        {
+                //if there is an intersection on this edge
+                if(iEdgeFlags & (1<<iEdge))
+                {
+                        fOffset = fGetOffset(afCubeValue[ a2iEdgeConnection[iEdge][0] ], 
+                                                     afCubeValue[ a2iEdgeConnection[iEdge][1] ], fTargetValue);
+
+                        asEdgeVertex[iEdge].fX = fX + (a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][0]  +  fOffset * a2fEdgeDirection[iEdge][0]) * fScale;
+                        asEdgeVertex[iEdge].fY = fY + (a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][1]  +  fOffset * a2fEdgeDirection[iEdge][1]) * fScale;
+                        asEdgeVertex[iEdge].fZ = fZ + (a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][2]  +  fOffset * a2fEdgeDirection[iEdge][2]) * fScale;
+
+                        vGetNormal(asEdgeNorm[iEdge], asEdgeVertex[iEdge].fX, asEdgeVertex[iEdge].fY, asEdgeVertex[iEdge].fZ);
+                }
+        }
+
+
+        //Draw the triangles that were found.  There can be up to five per cube
+        for(iTriangle = 0; iTriangle < 5; iTriangle++)
+        {
+                if(a2iTriangleConnectionTable[iFlagIndex][3*iTriangle] < 0)
+                        break;
+
+                for(iCorner = 0; iCorner < 3; iCorner++)
+                {
+                        iVertex = a2iTriangleConnectionTable[iFlagIndex][3*iTriangle+iCorner];
+
+                        vGetColor(sColor, asEdgeVertex[iVertex], asEdgeNorm[iVertex]);
+                        glColor3f(sColor.fX, sColor.fY, sColor.fZ);
+                        glNormal3f(asEdgeNorm[iVertex].fX,   asEdgeNorm[iVertex].fY,   asEdgeNorm[iVertex].fZ);
+                        glVertex3f(asEdgeVertex[iVertex].fX, asEdgeVertex[iVertex].fY, asEdgeVertex[iVertex].fZ);
+                }
+        }
+}
+}*/
+
 
    unsigned Space :: voxelHash( unsigned N, Vector coord, unsigned dim ){
 

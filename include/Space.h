@@ -12,7 +12,6 @@
 #include "Vector.h"
 #include "Real.h"
 #include "Mesh.h"
-#include <unordered_map>
 
 using namespace std;
 
@@ -63,6 +62,7 @@ namespace NITRO{
       void normalize( void );
       void spatiallyHash( void );
       unsigned voxelHash( unsigned N, Vector coord, unsigned dim );
+      void marchCube( unsigned i, unsigned j, unsigned k );
       void readSample( stringstream& ss );
       void updateGrid( const Vector newSample );
       unsigned m_grid[3];
@@ -70,7 +70,7 @@ namespace NITRO{
       Vector min_coord;
       Vector max_coord;
 
-      vector< Sample* >* voxels;
+      vector< Sample* >* voxelVertices;
       // unordered_map< Vector, vector< Sample * > > voxels;
 
    };

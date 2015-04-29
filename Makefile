@@ -74,7 +74,7 @@ obj/Real.o: src/Real.cpp include/Real.h
 obj/Shader.o: src/Shader.cpp include/Shader.h 
 	$(CC) $(CFLAGS) -c src/Shader.cpp -o obj/Shader.o
 
-obj/Space.o: src/Space.cpp include/Space.h include/Vector.h include/Real.h include/Mesh.h include/HalfEdge.h include/Types.h include/Vertex.h include/Edge.h include/Face.h 
+obj/Space.o: src/Space.cpp include/Space.h include/Vector.h include/Real.h include/Mesh.h include/HalfEdge.h include/Types.h include/Vertex.h include/Edge.h include/Face.h include/March.h 
 	$(CC) $(CFLAGS) -c src/Space.cpp -o obj/Space.o
 
 obj/Vector.o: src/Vector.cpp include/Vector.h 
