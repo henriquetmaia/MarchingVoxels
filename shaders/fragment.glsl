@@ -6,7 +6,9 @@ varying vec3 color;
 
 float diffuse( vec3 N, vec3 L )
 {
-   return max( 0., dot( N, L ));
+   //return max( 0., dot( N, L ));
+   return abs( dot( N, L ));
+
 }
 
 float specular( vec3 N, vec3 L, vec3 E )
@@ -19,7 +21,8 @@ float specular( vec3 N, vec3 L, vec3 E )
 float fresnel( vec3 N, vec3 E )
 {
    const float sharpness = 10.;
-   float NE = max( 0., dot( N, E ));
+   //float NE = max( 0., dot( N, E ));
+   float NE = abs(dot( N, E ));
    return pow( sqrt( 1. - NE*NE ), sharpness );
 }
 
@@ -30,8 +33,10 @@ void main()
    vec3 E = normalize( eye - position );
    vec3 R = 2.*dot(L,N)*N - L;
    vec3 one = vec3( 1., 1., 1. );
+   vec3 dummy_color = vec3( 1., 0., 0. );
 
    gl_FragColor.rgb = diffuse(N,L)*color + .5*specular(N,L,E)*one + .5*fresnel(N,E)*one;
+   //gl_FragColor.rgb = dummy_color;
    gl_FragColor.a = 1.;
 }
 

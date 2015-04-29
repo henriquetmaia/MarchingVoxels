@@ -56,6 +56,11 @@ namespace NITRO{
       // returns number of fields contained in this space
 
       vector< DensityField* > m_sampleSets;
+      Mesh* tesselation;
+
+      vector< Vector > voxVerts;
+      double m_density; 
+
 
    private:
       unsigned int m_fieldCount;
@@ -66,11 +71,10 @@ namespace NITRO{
       void readSample( stringstream& ss );
       // void updateGrid( const Vector newSample ); // unecessary if normalize
       double getOffset( double val1, double val2 );
-      double vertDensity( vector< Sample* > samples );
+      double vertDensity( int i, int j, int k );
       Vector getNormal( unsigned i, unsigned j, unsigned k );
       Vector baseCoord( unsigned i, unsigned j, unsigned k );
       unsigned m_grid[3];
-      double m_density; 
       Vector min_coord;
       Vector max_coord;
 

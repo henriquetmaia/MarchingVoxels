@@ -4,6 +4,7 @@
 #include <sstream>
 #include "Space.h"
 #include "March.h"
+#include <math.h>       /* floor */
 
 using namespace std;
 namespace NITRO
@@ -18,14 +19,15 @@ namespace NITRO
 		m_fieldCount = 0;
 		m_density = density;
 
-		if( x_dim <= 2 || y_dim <= 2 || z_dim <= 2 ){
-			cerr << "voxels dimensions must be at least 3 " << endl;
+		if( x_dim < 1 || y_dim < 1 || z_dim < 1 ){
+			cerr << "voxels dimensions must be at least [1 x 1 x 1] " << endl;
 			exit( EXIT_FAILURE );
 		}
 		// these need to be >= 4, should check that somewhere
-		m_grid[0] = x_dim + 1;
+		m_grid[0] = x_dim + 1; // num verts per dim
 		m_grid[1] = y_dim + 1;
 		m_grid[2] = z_dim + 1;
+		tesselation = new Mesh();
 	}
 
 	Space :: Space( void )
@@ -35,6 +37,7 @@ namespace NITRO
 		m_grid[0] = 0;
 		m_grid[1] = 0;
 		m_grid[2] = 0;
+		tesselation = new Mesh();
 	}
 
 	Space :: ~Space( void )
@@ -148,12 +151,16 @@ namespace NITRO
 				unsigned xi = voxelHash( m_grid[0], samples[s]->coordinate, 0 );
 				unsigned yi = voxelHash( m_grid[1], samples[s]->coordinate, 1 );
 				unsigned zi = voxelHash( m_grid[2], samples[s]->coordinate, 2 );
-				cout << "adding to bin: [" << xi << "][" << yi << "][" << zi << "]" << endl;
+				cout << "adding to hash bin: [" << xi << "][" << yi << "][" << zi << "]" << endl;
 				voxelVertices[ xi + m_grid[1] * ( yi + m_grid[2] * zi )].push_back( samples[s] );
 			}			
 
    		}
+   		cout << "ready to march " << endl;
 	}
+
+	ofstream triangles;
+	unsigned vertCount;
 
 	void Space :: march( void ){
 
@@ -168,36 +175,45 @@ namespace NITRO
    		//	assign appropriate edges
    		//	create triangles & normals, add them to the 
 
+		string outputName = "data/test.obj";
+		triangles.open( outputName ); 
 
-   		unsigned xBins = m_grid[0] - 2;
-   		unsigned yBins = m_grid[1] - 2;
-   		unsigned zBins = m_grid[2] - 2;
+   		unsigned xBins = m_grid[0] - 1;
+   		unsigned yBins = m_grid[1] - 1;
+   		unsigned zBins = m_grid[2] - 1;
 
-		for( unsigned k = 1; k < zBins; ++k ){
+   		vertCount = 0;
+
+		for( unsigned k = 0; k < zBins; ++k ){
 			// for each plane-slice of voxels
-			for( unsigned j = 1; j < yBins; ++j ){
-				for( unsigned i = 1; i < xBins; ++i ){
+			for( unsigned j = 0; j < yBins; ++j ){
+				for( unsigned i = 0; i < xBins; ++i ){
 					// examine each voxel
 					marchCube( i, j, k );
-					cout << "cube: " << i << " " << j << " " << k << endl;
+					// cout << "cube: " << i << " " << j << " " << k << endl;
 				}
 			}
 		}
+		triangles.close();
+
+		tesselation->read( outputName );
+
+		// if( triangles.is_open() ){
+		// }
 	}
 
 	void Space :: marchCube( unsigned i, unsigned j, unsigned k ){
 
    		double vertDensities[8];
    		Vector normals[8];
-   		int8_t activeVerts = 0;
+   		int activeVerts = 0;
    		// Flat[x + WIDTH * (y + DEPTH * z)] = Original[x, y, z]
 		for( unsigned z = 0; z < 2; ++z ){
 			for( unsigned y = 0; y < 2; ++y ){
 				for( unsigned x = 0; x < 2; ++x ){
 
-					vector< Sample* > vert = voxelVertices[ (i + x) + m_grid[1] * ( (j + y) + m_grid[2] * (k + z) ) ];
-					double vd = vertDensity( vert );
-						cout << "vd: [" << ( x + 2 * (y + 2 * z) ) << "] " << vd << endl;
+					double vd = vertDensity( i + x, j + y, k + z );
+					// cout << "vd: [" << ( x + 2 * (y + 2 * z) ) << "] " << vd << endl;
 
 					if( vd >= m_density ){
 						activeVerts |= 1 << ( x + 2 * (y + 2 * z) );          
@@ -209,13 +225,23 @@ namespace NITRO
 			}
 		}
 
-
-		int8_t edgesIntersected = cubeEdgeFlags[ activeVerts ];
+		// cout << "activeVerts: " << activeVerts << endl;
+		int edgesIntersected = cubeEdgeFlags[ activeVerts ];
 		if( edgesIntersected == 0 ){
 			return; // completely empty/full volume element
 		}
 
 		Vector baseVert = baseCoord( i, j, k );
+
+		voxVerts.push_back( baseVert );
+		voxVerts.push_back( baseCoord( i + 1, j, k ) );
+		voxVerts.push_back( baseCoord( i, j + 1, k ) );
+		voxVerts.push_back( baseCoord( i + 1, j + 1, k ) );
+
+		voxVerts.push_back( baseCoord( i , j, k + 1) );
+		voxVerts.push_back( baseCoord( i + 1, j, k + 1 ) );
+		voxVerts.push_back( baseCoord( i, j + 1, k + 1 ) );
+		voxVerts.push_back( baseCoord( i + 1, j + 1, k + 1 ) );
 
 		Vector edgeVertex[12];
 		Vector vertNormal[12];
@@ -229,9 +255,9 @@ namespace NITRO
 
                 vertNormal[e] = (offset)*normals[ edgeConnection[e][0] ] + (1.0 - offset)*normals[ edgeConnection[e][1] ];
 
-                edgeVertex[e].x = baseVert.x + (vertexOffset[ edgeConnection[e][0] ][0]  +  offset * edgeDirection[e][0]) * (2 / m_grid[0]);
-                edgeVertex[e].y = baseVert.y + (vertexOffset[ edgeConnection[e][0] ][1]  +  offset * edgeDirection[e][1]) * (2 / m_grid[1]);
-                edgeVertex[e].z = baseVert.z + (vertexOffset[ edgeConnection[e][0] ][2]  +  offset * edgeDirection[e][2]) * (2 / m_grid[2]);
+                edgeVertex[e].x = baseVert.x + (vertexOffset[ edgeConnection[e][0] ][0]  +  offset * edgeDirection[e][0]) * (2.0 / m_grid[0]);
+                edgeVertex[e].y = baseVert.y + (vertexOffset[ edgeConnection[e][0] ][1]  +  offset * edgeDirection[e][1]) * (2.0 / m_grid[1]);
+                edgeVertex[e].z = baseVert.z + (vertexOffset[ edgeConnection[e][0] ][2]  +  offset * edgeDirection[e][2]) * (2.0 / m_grid[2]);
 
             }
         }
@@ -241,19 +267,34 @@ namespace NITRO
             if( triangleConnectionTable[ activeVerts ][ 3 * t ] < 0){
             	break;
             }
-
+            unsigned faceVerts[3];
             for(unsigned c = 0; c < 3; ++c ){
                 int v = triangleConnectionTable[ activeVerts ][ 3 * t + c ];
 
-            	cout << "v " << edgeVertex[v].x << " " << edgeVertex[v].y << " " << edgeVertex[v].z << endl;
-                    // glNormal3f(asEdgeNorm[iVertex].fX,   asEdgeNorm[iVertex].fY,   asEdgeNorm[iVertex].fZ);
-                    // glVertex3f(asEdgeVertex[iVertex].fX, asEdgeVertex[iVertex].fY, asEdgeVertex[iVertex].fZ);
+				if( triangles.is_open() ){
+					++vertCount;
+					// cout << "v " << edgeVertex[v].x << " " << edgeVertex[v].y << " " << edgeVertex[v].z << endl;
+	            	triangles << "v " << edgeVertex[v].x << " " << edgeVertex[v].y << " " << edgeVertex[v].z << endl;
+	            	// triangles << "vn " << vertNormal[v].x << " " << vertNormal[v].y << " " << vertNormal[v].z << endl;
+	            	faceVerts[c] = vertCount;
+	            }
+            }
+			if( triangles.is_open() ){
+            	triangles << "f " << faceVerts[0] << " " << faceVerts[1] << " " << faceVerts[2] << endl;
+            	// triangles << "f " << faceVerts[0] << " " << faceVerts[2] << " " << faceVerts[1] << endl;
             }
         }
    }
 
-   double Space :: vertDensity( vector< Sample* > samples ){
+   double Space :: vertDensity( int i, int j, int k ){
 
+   		if( i < 0 || i >= m_grid[0] || 
+   			j < 0 || j >= m_grid[1] ||
+   			k < 0 || k >= m_grid[2] ){
+   			return 0.0;
+   		}
+
+   		vector< Sample* > samples = voxelVertices[ i + m_grid[1] * ( j + m_grid[2] * k ) ];
 		if( unsigned numSamples = samples.size() != 0 ){
 			double avgDensity = 0.;
 			for( unsigned s = 0; s < numSamples; ++s ){
@@ -264,6 +305,8 @@ namespace NITRO
 		}
    		return 0.;
    }
+
+
 
 	// getoffset finds the approximate point of intersection of the surface
 	// between two points with the values val1 and val2
@@ -279,121 +322,48 @@ namespace NITRO
 	//This gradient can be used as a very accurate vertx normal for lighting calculations
 	Vector Space :: getNormal( unsigned i, unsigned j, unsigned k ){
 
+		//TODO: this doesnt work for our generated data, when both (i-1) and (i+1) are 0...
+
 		Vector vertNormal;
-		vertNormal.x = vertDensity( voxelVertices[ (i - 1) + m_grid[1] * ( j + m_grid[2] * k ) ] ) -
-					   vertDensity( voxelVertices[ (i + 1) + m_grid[1] * ( j + m_grid[2] * k ) ] );
-		vertNormal.x /= ( 2 / m_grid[0] );
+		vertNormal.x = vertDensity( i - 1, j , k  ) - vertDensity( i + 1, j, k );
+		vertNormal.x /= ( 2.0 / m_grid[0] );
 
-		vertNormal.y = vertDensity( voxelVertices[ i + m_grid[1] * ( (j - 1) + m_grid[2] * k ) ] ) -
-					   vertDensity( voxelVertices[ i + m_grid[1] * ( (j + 1) + m_grid[2] * k ) ] );
-		vertNormal.y /= ( 2 / m_grid[1] );
+		vertNormal.y = vertDensity( i, j - 1, k  ) - vertDensity( i, j + 1, k );
+		vertNormal.y /= ( 2.0 / m_grid[1] );
 
-		vertNormal.z = vertDensity( voxelVertices[ i + m_grid[1] * ( j + m_grid[2] * (k - 1) ) ] ) -
-					   vertDensity( voxelVertices[ i + m_grid[1] * ( j + m_grid[2] * (k + 1) ) ] );
-		vertNormal.z /= ( 2 / m_grid[2] );
+		vertNormal.z = vertDensity( i, j , k - 1 ) - vertDensity( i, j, k + 1 );
+		vertNormal.z /= ( 2.0 / m_grid[2] );
 
 		return vertNormal.unit();
 	}
-
-
-/*
-{
-	//vMarchCube1 performs the Marching Cubes algorithm on a single cube
-GLvoid vMarchCube1(GLfloat fX, GLfloat fY, GLfloat fZ, GLfloat fScale)
-{
-        extern GLint aiCubeEdgeFlags[256];
-        extern GLint a2iTriangleConnectionTable[256][16];
-
-        GLint iCorner, iVertex, iVertexTest, iEdge, iTriangle, iFlagIndex, iEdgeFlags;
-        GLfloat fOffset;
-        GLvector sColor;
-        GLfloat afCubeValue[8];
-        GLvector asEdgeVertex[12];
-        GLvector asEdgeNorm[12];
-
-        //Make a local copy of the values at the cube's corners
-        for(iVertex = 0; iVertex < 8; iVertex++)
-        {
-                afCubeValue[iVertex] = fSample(fX + a2fVertexOffset[iVertex][0]*fScale,
-                                                   fY + a2fVertexOffset[iVertex][1]*fScale,
-                                                   fZ + a2fVertexOffset[iVertex][2]*fScale);
-        }
-
-        //Find which vertices are inside of the surface and which are outside
-        iFlagIndex = 0;
-        for(iVertexTest = 0; iVertexTest < 8; iVertexTest++)
-        {
-                if(afCubeValue[iVertexTest] <= fTargetValue) 
-                        iFlagIndex |= 1<<iVertexTest;
-        }
-
-        //Find which edges are intersected by the surface
-        iEdgeFlags = aiCubeEdgeFlags[iFlagIndex];
-
-        //If the cube is entirely inside or outside of the surface, then there will be no intersections
-        if(iEdgeFlags == 0) 
-        {
-                return;
-        }
-
-        //Find the point of intersection of the surface with each edge
-        //Then find the normal to the surface at those points
-        for(iEdge = 0; iEdge < 12; iEdge++)
-        {
-                //if there is an intersection on this edge
-                if(iEdgeFlags & (1<<iEdge))
-                {
-                        fOffset = fGetOffset(afCubeValue[ a2iEdgeConnection[iEdge][0] ], 
-                                                     afCubeValue[ a2iEdgeConnection[iEdge][1] ], fTargetValue);
-
-                        asEdgeVertex[iEdge].fX = fX + (a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][0]  +  fOffset * a2fEdgeDirection[iEdge][0]) * fScale;
-                        asEdgeVertex[iEdge].fY = fY + (a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][1]  +  fOffset * a2fEdgeDirection[iEdge][1]) * fScale;
-                        asEdgeVertex[iEdge].fZ = fZ + (a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][2]  +  fOffset * a2fEdgeDirection[iEdge][2]) * fScale;
-
-                        vGetNormal(asEdgeNorm[iEdge], asEdgeVertex[iEdge].fX, asEdgeVertex[iEdge].fY, asEdgeVertex[iEdge].fZ);
-                }
-        }
-
-
-        //Draw the triangles that were found.  There can be up to five per cube
-        for(iTriangle = 0; iTriangle < 5; iTriangle++)
-        {
-                if(a2iTriangleConnectionTable[iFlagIndex][3*iTriangle] < 0)
-                        break;
-
-                for(iCorner = 0; iCorner < 3; iCorner++)
-                {
-                        iVertex = a2iTriangleConnectionTable[iFlagIndex][3*iTriangle+iCorner];
-
-                        vGetColor(sColor, asEdgeVertex[iVertex], asEdgeNorm[iVertex]);
-                        glColor3f(sColor.fX, sColor.fY, sColor.fZ);
-                        glNormal3f(asEdgeNorm[iVertex].fX,   asEdgeNorm[iVertex].fY,   asEdgeNorm[iVertex].fZ);
-                        glVertex3f(asEdgeVertex[iVertex].fX, asEdgeVertex[iVertex].fY, asEdgeVertex[iVertex].fZ);
-                }
-        }
-}
-}
-*/
 
 	Vector Space :: baseCoord( unsigned i, unsigned j, unsigned k ){
   //  		double h = 2 / N;
   //  		double l = -1.0 - h/2;
 		// double flr = l + h * i; 
+
+		// cout << " coord: " << Vector(
+		// ( -1.0 - (1.0 / m_grid[0]) + (2.0 / m_grid[0]) * (i+1) ),
+		// ( -1.0 - (1.0 / m_grid[1]) + (2.0 / m_grid[1]) * (j+1) ),
+		// ( -1.0 - (1.0 / m_grid[2]) + (2.0 / m_grid[2]) * (k+1) )
+		// 			  ) << endl;
+
 		return Vector(
-		( -1.0 - (1/ m_grid[0]) + (2/m_grid[0])*i ),
-		( -1.0 - (1/ m_grid[1]) + (2/m_grid[1])*j ),
-		( -1.0 - (1/ m_grid[2]) + (2/m_grid[2])*k )
+		( -1.0 - (1.0 / m_grid[0]) + (2.0 / m_grid[0]) * (i+1) ),
+		( -1.0 - (1.0 / m_grid[1]) + (2.0 / m_grid[1]) * (j+1) ),
+		( -1.0 - (1.0 / m_grid[2]) + (2.0 / m_grid[2]) * (k+1) )
 					  );
 	}
 
 
 	unsigned Space :: voxelHash( unsigned N, Vector coord, unsigned dim ){
 
-   		double h = 2 / N;
-   		double l = -1.0 - h/2;
-   		double r =  1.0 + h/2;
+   		// double h = 2.0 / N;
+   		double l = -1.0;
+   		double r =  1.0000001; // to clamp from 0 -> N-1
 		double alpha = ( coord[dim] - l ) / ( r - l );
-		return  (unsigned) (alpha * (N ) );
+		// cout << "alpha " << alpha << " left " << l << " right " << r << " h " << h << " N " << N << " hash: " << floor(alpha * N) << endl;
+		return  floor( alpha * N );
 	}
 
 	// void Space :: updateGrid( const Vector newSample ){

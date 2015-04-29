@@ -3,8 +3,8 @@
 # composed of vd: vertices & densities ( x, y, z, d)
 
 vd 0 0 0 0
-vd 0 0 1 1
-vd 0 1 0 1
+vd 0 0 1 0
+vd 0 1 0 0
 vd 0 1 1 1
 vd 1 0 0 1
 vd 1 0 1 1

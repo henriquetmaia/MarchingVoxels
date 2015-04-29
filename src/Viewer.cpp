@@ -20,6 +20,9 @@ namespace NITRO
    int Viewer::windowSize[2] = { 512, 512 };
    Camera Viewer::camera;
    Shader Viewer::shader;
+   bool tessl = false;
+   bool voxVerts = false;
+   bool showVerts = true;
    
    void Viewer :: init( void )
    {
@@ -27,7 +30,7 @@ namespace NITRO
       initGLUT();
       initGL();
       initGLSL();
-
+      mProcess();
       updateDisplayList();
       glutMainLoop();
    }
@@ -59,7 +62,7 @@ namespace NITRO
       // initialize menus
       int viewMenu = glutCreateMenu( Viewer::view );
       glutSetMenu( viewMenu );
-      glutAddMenuEntry( "[s] Smooth Shaded",  menuSmoothShaded );
+      // glutAddMenuEntry( "[s] Smooth Shaded",  menuSmoothShaded );
       glutAddMenuEntry( "[f] Wireframe",      menuWireframe    );
       glutAddMenuEntry( "[↑] Zoom In",    menuZoomIn       );
       glutAddMenuEntry( "[↓] Zoom Out",   menuZoomOut      );
@@ -109,9 +112,9 @@ namespace NITRO
    {
       switch( value )
       {
-         case( menuSmoothShaded ):
-            mSmoothShaded();
-            break;
+         // case( menuSmoothShaded ):
+         //    mSmoothShaded();
+         //    break;
          case( menuWireframe ):
             mWireframe();
             break;
@@ -231,7 +234,17 @@ namespace NITRO
             mScreenshot();
             break;
          case ' ':
-            mProcess();
+            showVerts = !showVerts;
+            // mProcess();
+            updateDisplayList();
+            break;
+         case 't':
+            tessl = !tessl;
+            updateDisplayList();
+            break;
+         case 'x':
+            voxVerts = !voxVerts;
+            updateDisplayList();
             break;
          case 27:
             mExit();
@@ -348,13 +361,20 @@ namespace NITRO
       // glColor3f( 1., .4, 0. ); // Caltech Orange
       glColor3f( 0.549, 0.839, 1. ); // Columbia Blue
 
-      for( unsigned df = 0; df < fields.size(); ++df ){
-         for( FaceCIter f  = fields[df]->faces.begin();
-                        f != fields[df]->faces.end();
-                        f ++ )
+      // for( unsigned df = 0; df < fields.size(); ++df ){
+         // for( FaceCIter f  = fields[df]->faces.begin();
+         //                f != fields[df]->faces.end();
+         //                f ++ )
+      if( tessl ){
+        for( FaceCIter f  = fields.tesselation->faces.begin();
+                  f != fields.tesselation->faces.end();
+                  f ++ )    
          {
-            if( f->isBoundary() ) continue;
+            // cout << " drawing face " << endl;
+            // if( f->isBoundary() ) continue;
 
+            glDisable(  GL_CULL_FACE );
+      glDisable( GL_LIGHTING );
             glBegin( GL_POLYGON );
             if( mode == renderWireframe )
             {
@@ -419,11 +439,23 @@ namespace NITRO
 
       glBegin( GL_POINTS );
 
-      for( unsigned df = 0; df < fields.size(); ++df ){
-         for( unsigned v  = 0; v < fields.m_sampleSets[df]->samples.size(); ++v )
-         {
-            glVertex3dv( &(fields.m_sampleSets[df]->samples[v]->coordinate[0]) );
+      if( showVerts ){
+      if( !voxVerts ){
+         for( unsigned df = 0; df < fields.size(); ++df ){
+            for( unsigned v  = 0; v < fields.m_sampleSets[df]->samples.size(); ++v )
+            {
+               if( fields.m_sampleSets[df]->samples[v]->density >= fields.m_density ){
+                  // cout << "den " << fields.m_sampleSets[df]->samples[v]->desity << endl;
+                  glVertex3dv( &(fields.m_sampleSets[df]->samples[v]->coordinate[0]) );
+               }
+            }
          }
+      }
+      else{
+         for( unsigned vx = 0; vx < fields.voxVerts.size(); ++vx ){
+            glVertex3dv( &(fields.voxVerts[vx][0]) );
+         }
+      }
       }
 
       glEnd();

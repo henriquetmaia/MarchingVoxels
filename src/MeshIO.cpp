@@ -474,6 +474,10 @@ namespace NITRO
          while( he != f->he );
       }
 
+      if( nIncidentFaces.size() == 0 ){
+         cerr << "Warning: No manifolds while reading OBJ! Exiting..." << endl;
+         exit( EXIT_FAILURE );
+      }
       int vertexIndex = 0;
       for( VertexCIter v  = mesh.vertices.begin();
                        v != mesh.vertices.end();
