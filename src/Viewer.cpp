@@ -24,8 +24,25 @@ namespace NITRO
    bool voxVerts = false;
    bool showVerts = true;
    
+   void printHelp( void ){
+      cout << endl;
+      cout << "MarchingCubes GUI: " << endl;
+      cout << "[↑] Zoom In " << endl;
+      cout << "[↓] Zoom Out " << endl;
+      cout << "[->] Higher Resolution " << endl;
+      cout << "[<-] Lower Resolution " << endl;
+      cout << "[space] show vertices " << endl;
+      cout << "[t] show Mesh " << endl;
+      cout << "[x] toggle between display of sample vertices and voxels " << endl;
+      cout << "[s] smooth shading on verts " << endl;
+      cout << "[f] no shading on verts " << endl;
+      cout << "[\\] Screenshot " << endl;
+      cout << "[esc] Exit " << endl;
+   }
+
    void Viewer :: init( void )
    {
+      printHelp();
       restoreViewerState();
       initGLUT();
       initGL();
@@ -66,6 +83,8 @@ namespace NITRO
       glutAddMenuEntry( "[f] Wireframe",      menuWireframe    );
       glutAddMenuEntry( "[↑] Zoom In",    menuZoomIn       );
       glutAddMenuEntry( "[↓] Zoom Out",   menuZoomOut      );
+      glutAddMenuEntry( "[->] Up Resolution",    -1 );
+      glutAddMenuEntry( "[<-] Lower Resolution",   -2 );      
 
       int mainMenu = glutCreateMenu( Viewer::menu );
       glutSetMenu( mainMenu );
@@ -140,7 +159,7 @@ namespace NITRO
             exit( EXIT_FAILURE );
          }
          fields.march();
-         cout << "finished Marching!" << endl;
+         // cout << "finished Marching!" << endl;
          // for every densityfield
          // cout << "Finished MarchingCubes on densityfield["<<d <<"], in d_time: " << sim_time << endl;
 
@@ -254,6 +273,26 @@ namespace NITRO
       }
    }
 
+   void Viewer :: changeResolution( bool higher ){
+
+      int delta = -1;
+      if( higher ){
+         delta = 1;
+      }
+      // cout << "higher: " << higher << "delta " << delta << endl;
+
+      // cout << "fields m_grid before: " << fields.m_grid[0] << " ";
+      fields.m_grid[0] = (fields.m_grid[0] + delta  < 1 ) ?  1 : fields.m_grid[0] + delta;
+      fields.m_grid[1] = (fields.m_grid[1] + delta  < 1 ) ?  1 : fields.m_grid[1] + delta;
+      fields.m_grid[2] = (fields.m_grid[2] + delta  < 1 ) ?  1 : fields.m_grid[2] + delta;
+
+      // cout << "after: " << fields.m_grid[0] << endl;
+      fields.spatiallyHash();
+
+      mProcess();
+
+   }
+
    void Viewer :: special( int i, int x, int y )
    {
       switch( i )
@@ -264,6 +303,12 @@ namespace NITRO
          case GLUT_KEY_DOWN:
             camera.zoomOut();
             break;
+         case GLUT_KEY_LEFT:
+            changeResolution( false );
+            break;
+         case GLUT_KEY_RIGHT:
+            changeResolution( true );
+            break;            
          case 27:
             mExit();
             break;
@@ -370,26 +415,24 @@ namespace NITRO
                   f != fields.tesselation->faces.end();
                   f ++ )    
          {
-            // cout << " drawing face " << endl;
-            // if( f->isBoundary() ) continue;
 
-            glDisable(  GL_CULL_FACE );
-      glDisable( GL_LIGHTING );
+glDisable(  GL_CULL_FACE );
+glDisable( GL_LIGHTING );
             glBegin( GL_POLYGON );
-            if( mode == renderWireframe )
-            {
+            // if( mode == renderWireframe )
+            // {
                Vector N = f->normal();
                glNormal3dv( &N[0] );
-            }
+            // }
 
             HalfEdgeCIter he = f->he;
             do
             {
-               if( mode != renderWireframe )
-               {
-                  Vector N = he->vertex->normal();
-                  glNormal3dv( &N[0] );
-               }
+               // if( mode != renderWireframe )
+               // {
+               //    Vector N = he->vertex->normal();
+               //    glNormal3dv( &N[0] );
+               // }
 
                glVertex3dv( &he->vertex->position[0] );
 
@@ -435,27 +478,34 @@ namespace NITRO
       // glEnable( GL_POINT_SMOOTH );
       // glEnable( GL_BLEND );
       // glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-      glColor4f( 0.549, 0.839, 1., 1. ); // Columbia Blue
+      // glColor4f( 0.549, 0.839, 1., 1. ); // Columbia Blue
+
+      if( voxVerts ){
+         glColor4f( 1.0 , 1.0 , 0., 0.5 ); // Columbia Blue
+      }
+      else{
+         glColor4f( 127.0 / 255 , 1.0 , 0., 0.5 ); // Columbia Blue
+      }
 
       glBegin( GL_POINTS );
 
       if( showVerts ){
-      if( !voxVerts ){
-         for( unsigned df = 0; df < fields.size(); ++df ){
-            for( unsigned v  = 0; v < fields.m_sampleSets[df]->samples.size(); ++v )
-            {
-               if( fields.m_sampleSets[df]->samples[v]->density >= fields.m_density ){
-                  // cout << "den " << fields.m_sampleSets[df]->samples[v]->desity << endl;
-                  glVertex3dv( &(fields.m_sampleSets[df]->samples[v]->coordinate[0]) );
+         if( !voxVerts ){
+            for( unsigned df = 0; df < fields.size(); ++df ){
+               for( unsigned v  = 0; v < fields.m_sampleSets[df]->samples.size(); ++v )
+               {
+                  if( fields.m_sampleSets[df]->samples[v]->density >= fields.m_density ){
+                     // cout << "den " << fields.m_sampleSets[df]->samples[v]->desity << endl;
+                     glVertex3dv( &(fields.m_sampleSets[df]->samples[v]->coordinate[0]) );
+                  }
                }
             }
          }
-      }
-      else{
-         for( unsigned vx = 0; vx < fields.voxVerts.size(); ++vx ){
-            glVertex3dv( &(fields.voxVerts[vx][0]) );
+         else{
+            for( unsigned vx = 0; vx < fields.voxVerts.size(); ++vx ){
+               glVertex3dv( &(fields.voxVerts[vx][0]) );
+            }
          }
-      }
       }
 
       glEnd();

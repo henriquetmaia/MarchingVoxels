@@ -117,12 +117,26 @@ namespace NITRO
 
    void Camera :: zoomIn( void )
    {
-      vZoom -= 0.5;
+      if( vZoom > 0. )
+      {
+         vZoom = 0.;
+      }
+      else
+      {
+         vZoom -= 0.5;
+      }
    }
 
    void Camera :: zoomOut( void )
    {
-      vZoom += 0.5;
+      if( vZoom < 0. )
+      {
+         vZoom = 0.;
+      }
+      else
+      {
+         vZoom += 0.5;
+      }
    }
 }
 

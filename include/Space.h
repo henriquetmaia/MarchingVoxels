@@ -61,11 +61,13 @@ namespace NITRO{
       vector< Vector > voxVerts;
       double m_density; 
 
+      unsigned m_grid[3];
+
+      void spatiallyHash( void );
 
    private:
       unsigned int m_fieldCount;
       void normalize( void );
-      void spatiallyHash( void );
       unsigned voxelHash( unsigned N, Vector coord, unsigned dim );
       void marchCube( unsigned i, unsigned j, unsigned k );
       void readSample( stringstream& ss );
@@ -74,9 +76,8 @@ namespace NITRO{
       double vertDensity( int i, int j, int k );
       Vector getNormal( unsigned i, unsigned j, unsigned k );
       Vector baseCoord( unsigned i, unsigned j, unsigned k );
-      unsigned m_grid[3];
-      Vector min_coord;
-      Vector max_coord;
+      // Vector min_coord;
+      // Vector max_coord;
 
       vector< Sample* >* voxelVertices;
       // unordered_map< Vector, vector< Sample * > > voxels;

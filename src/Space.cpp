@@ -151,12 +151,12 @@ namespace NITRO
 				unsigned xi = voxelHash( m_grid[0], samples[s]->coordinate, 0 );
 				unsigned yi = voxelHash( m_grid[1], samples[s]->coordinate, 1 );
 				unsigned zi = voxelHash( m_grid[2], samples[s]->coordinate, 2 );
-				cout << "adding to hash bin: [" << xi << "][" << yi << "][" << zi << "]" << endl;
+				// cout << "adding to hash bin: [" << xi << "][" << yi << "][" << zi << "]" << endl;
 				voxelVertices[ xi + m_grid[1] * ( yi + m_grid[2] * zi )].push_back( samples[s] );
 			}			
 
    		}
-   		cout << "ready to march " << endl;
+   		// cout << "ready to march " << endl;
 	}
 
 	ofstream triangles;
@@ -183,7 +183,7 @@ namespace NITRO
    		unsigned zBins = m_grid[2] - 1;
 
    		vertCount = 0;
-
+   		voxVerts.clear();
 		for( unsigned k = 0; k < zBins; ++k ){
 			// for each plane-slice of voxels
 			for( unsigned j = 0; j < yBins; ++j ){
@@ -196,6 +196,7 @@ namespace NITRO
 		}
 		triangles.close();
 
+		tesselation = new Mesh();
 		tesselation->read( outputName );
 
 		// if( triangles.is_open() ){

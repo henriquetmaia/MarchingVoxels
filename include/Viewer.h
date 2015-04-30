@@ -45,6 +45,8 @@ namespace NITRO
          static void drawVertices( void );
          static void drawIsolatedVertices( void );
          
+         static void changeResolution( bool higher );
+
          // GLUT callbacks
          static void display( void );
          static void idle( void );
